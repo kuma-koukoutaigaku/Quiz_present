@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         html += `</tbody></table>`;
-        listMount.innerHTML = html;
+        mount.innerHTML = html;
 
         if (mountId === 'list-mount') {
             const printBody = document.getElementById('print-table-body');
