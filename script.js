@@ -54,22 +54,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // スプレッドシートの各行（データ）を、指定された「タブ」列の値でグループ化する
             const grouped = {};
             rawData.forEach(item => {
-                const tabName = item['タブ'] || 'その他';
+                // カラム名の揺れに対応（'タブ' または 'tab'）
+                let tabName = item['タブ'] || item['tab'] || 'その他';
+                tabName = String(tabName).trim(); // 前後の空白を削除
+
                 if (!grouped[tabName]) grouped[tabName] = [];
 
                 grouped[tabName].push({
-                    m: item['問題タイプ'] || '',
-                    c: item['カテゴリ'] || '',
-                    i: item['指示文'] || '',
-                    q: item['問題'] || '',
-                    a: item['正解'] || '',
-                    d1: item['ダミー1'] || '', // マッピング修正: 選択肢1 -> ダミー1
-                    d2: item['ダミー2'] || '',
-                    d3: item['ダミー3'] || '',
-                    e: item['解説'] || '',
-                    t: item['日本語訳'] || ''
+                    m: item['問題タイプ'] || item['mode'] || '',
+                    c: item['カテゴリ'] || item['category'] || '',
+                    i: item['指示文'] || item['instruction'] || '',
+                    q: item['問題'] || item['question'] || '',
+                    a: item['正解'] || item['answer'] || '',
+                    d1: item['ダミー1'] || item['dummy1'] || '',
+                    d2: item['ダミー2'] || item['dummy2'] || '',
+                    d3: item['ダミー3'] || item['dummy3'] || '',
+                    e: item['解説'] || item['explanation'] || '',
+                    t: item['日本語訳'] || item['translation'] || ''
                 });
             });
+            console.log("Grouped tabs found: " + Object.keys(grouped).join(", "));
             return grouped;
         } catch (err) {
             console.error("Fetch Error Details:", err);
@@ -171,7 +175,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabName) {
                 document.getElementById('player-title').textContent = "読込中...";
                 const grouped = await fetchDataFromGAS();
-                quizData = grouped[tabName] || [];
+
+                // タブ名の完全一致で探す
+                quizData = grouped[tabName];
+
+                // 見つからない場合、念のため前後空白を消したもの同士で再検索
+                if (!quizData) {
+                    const cleanTab = tabName.trim();
+                    const targetKey = Object.keys(grouped).find(k => k.trim() === cleanTab);
+                    if (targetKey) quizData = grouped[targetKey];
+                }
+
+                if (!quizData || quizData.length === 0) {
+                    throw new Error(`タブ「${tabName}」が見つかりません。GAS側にデータがあるか確認してください。`);
+                }
                 displayTitle = tabName;
             } else if (encodedBase64) {
                 const base64 = decodeURIComponent(encodedBase64);
@@ -193,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderQuizList('list-mount', quizData, displayTitle);
         } catch (e) {
             console.error("Player mode init error:", e);
-            alert('URLが無効、またはデータの取得に失敗しました。');
+            alert('エラー: ' + e.message);
         }
     }
 
