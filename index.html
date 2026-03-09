@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Link Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body id="body">
+
+    <!-- 1. 作成モード (Generator) -->
+    <main class="app-container" id="generator-ui">
+        <header class="generator-header">
+            <h1>Quiz Creator</h1>
+            <p>GASから最新データを取得しています</p>
+        </header>
+
+        <section class="sync-card">
+            <div id="sync-status" class="sync-status">
+                <i class="ph ph-cloud-arrow-down"></i>
+                <p>同期中...</p>
+            </div>
+            <div id="tab-selector-container" class="tab-selector" style="display: none;">
+                <p class="selector-label">タブを選択してリンクを作成：</p>
+                <div id="tab-buttons" class="tab-buttons"></div>
+            </div>
+            <div id="loading-spinner" class="spinner" style="display: none;"></div>
+        </section>
+
+        <section class="preview-section" id="preview-section" style="display: none;">
+            <div class="preview-header">
+                <h2>プレビュー: <span id="current-tab-name">-</span></h2>
+                <div class="preview-controls">
+                    <div class="device-switcher">
+                        <button class="switcher-btn active" id="btn-pc"><i class="ph ph-desktop"></i> PC</button>
+                        <button class="switcher-btn" id="btn-mobile"><i class="ph ph-device-mobile"></i> スマホ</button>
+                    </div>
+                    <button class="btn primary" id="copy-link-btn">
+                        <i class="ph ph-copy"></i> リンクをコピー
+                    </button>
+                </div>
+            </div>
+
+            <!-- プレビュー本体（JSでタイトルとテーブルを生成） -->
+            <div id="player-preview-wrapper" class="player-table-container pc-view">
+                <div id="preview-mount"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 2. 視聴者モード (Player) - プレミアム横並びテーブル -->
+    <main class="player-view" id="player-ui" style="display: none;">
+        <header class="player-header">
+            <h1 id="player-title">Special Quiz</h1>
+            <div class="player-meta">
+                <span>全 <span id="quiz-total-count">0</span> 問</span>
+                <button class="btn-print-top" onclick="window.print()">
+                    <i class="ph ph-printer"></i> A4印刷用PDF
+                </button>
+            </div>
+        </header>
+
+        <div class="player-table-container">
+            <div id="list-mount"></div>
+        </div>
+
+        <footer class="player-footer">
+            <p>© Special Quiz Player</p>
+        </footer>
+    </main>
+
+    <!-- 3. 印刷用 (画面非表示) -->
+    <div id="print-table-view">
+        <h2 id="print-title" style="text-align: center; margin-bottom: 20px;"></h2>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">No.</th>
+                    <th>問題</th>
+                    <th style="width: 150px;">回答</th>
+                    <th>解説</th>
+                </tr>
+            </thead>
+            <tbody id="print-table-body"></tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
