@@ -2,6 +2,7 @@
 window.speakText = function (e, text) {
     if (e) e.stopPropagation();
     if (!text) return;
+
     // 不要な記号やアイコンを除去
     const cleanText = text.replace(/[\u2700-\u27BF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]/g, '').trim();
     const uttr = new SpeechSynthesisUtterance(cleanText);
@@ -10,6 +11,7 @@ window.speakText = function (e, text) {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(uttr);
 };
+
 document.addEventListener('DOMContentLoaded', () => {
     const generatorUI = document.getElementById('generator-ui');
     const playerUI = document.getElementById('player-ui');
@@ -19,19 +21,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewSection = document.getElementById('preview-section');
     const currentTabSpan = document.getElementById('current-tab-name');
     const copyBtn = document.getElementById('copy-link-btn');
+
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbxNIk7TAcBDycadrKEhVYeHiMB_FyJ7bls80-Q6lDKJTqB6261I9CiS4lDroYWzjj71/exec';
+
     let currentGroupedData = {};
     let selectedTab = null;
+
     const urlParams = new URLSearchParams(window.location.search);
     const dataParam = urlParams.get('d');
     const tabParam = urlParams.get('t');
+
     // デバッグ用: 起動ログ
     console.log("App Started. Params: t=" + tabParam + ", d=" + (dataParam ? "exists" : "none"));
+
     if (dataParam || tabParam) {
         initPlayerMode(dataParam, tabParam);
     } else {
         initGeneratorMode();
     }
+
     // ==========================================
     // Generator Mode (作成画面)
     // ==========================================
@@ -42,11 +50,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error('HTTPエラー ステータス: ' + res.status);
             const rawData = await res.json();
             console.log("Data received. Rows: " + rawData.length);
+
             // スプレッドシートの各行（データ）を、指定された「タブ」列の値でグループ化する
             const grouped = {};
             rawData.forEach(item => {
                 const tabName = item['タブ'] || 'その他';
                 if (!grouped[tabName]) grouped[tabName] = [];
+
                 grouped[tabName].push({
                     m: item['問題タイプ'] || '',
                     c: item['カテゴリ'] || '',
@@ -66,18 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
             throw err;
         }
     }
+
     function initGeneratorMode() {
         console.log("Entering Generator Mode");
         syncStatus.innerHTML = '<i class="ph ph-cloud-arrow-down"></i><p>スプレッドシートと同期中...</p>';
         syncStatus.style.display = 'flex';
+
         fetchDataFromGAS().then(grouped => {
             currentGroupedData = grouped;
             const tabs = Object.keys(grouped);
             if (tabs.length === 0) throw new Error('スプレッドシートにデータが見つかりませんでした。');
+
             tabButtons.innerHTML = tabs.map(tab => `<button class="tab-btn">${tab}</button>`).join('');
             tabButtons.querySelectorAll('.tab-btn').forEach((btn, i) => {
                 btn.onclick = () => selectTab(tabs[i], btn);
             });
+
             syncStatus.style.display = 'none';
             tabSelector.style.display = 'block';
             console.log("Sync Complete. Tabs ready.");
@@ -89,20 +103,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button onclick="location.reload()" style="padding:5px 10px; cursor:pointer;">再試行</button>
             </div>`;
         });
+
         function selectTab(tab, btn) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedTab = tab;
             currentTabSpan.textContent = tab;
+
             // プレビュー表示もプレイヤーと同じロジックを使用
             renderQuizList('preview-mount', currentGroupedData[tab], tab);
+
             previewSection.style.display = 'block';
             previewSection.scrollIntoView({ behavior: 'smooth' });
         }
+
         // デバイス切り替え
         const btnPc = document.getElementById('btn-pc');
         const btnMobile = document.getElementById('btn-mobile');
         const previewWrapper = document.getElementById('player-preview-wrapper');
+
         btnPc.onclick = () => {
             btnPc.classList.add('active');
             btnMobile.classList.remove('active');
@@ -115,22 +134,28 @@ document.addEventListener('DOMContentLoaded', () => {
             previewWrapper.classList.remove('pc-view');
             previewWrapper.classList.add('mobile-view');
         };
+
         copyBtn.onclick = () => {
             if (!selectedTab) return;
+
             // ローカルファイルからの共有は警告
             if (window.location.protocol === 'file:') {
                 alert('警告: 現在ローカルファイル（テスト中）として開いています。GitHub上でこのボタンを押さないと、生成されたリンクは他のスマホでは開きません。');
             }
+
             const baseUrl = window.location.href.split('?')[0];
             const shareUrl = `${baseUrl}?t=${encodeURIComponent(selectedTab)}`;
+
             // URLの長さチェック（一般的におおよそ 2000〜8000文字を超えると危険）
             if (shareUrl.length > 8000) {
                 console.warn('URL length is very long:', shareUrl.length);
                 alert('警告: 問題数が多すぎるため、一部のスマホアプリではリンクが開けない可能性があります。');
             }
+
             navigator.clipboard.writeText(shareUrl).then(() => alert('短縮URLをコピーしました！'));
         };
     }
+
     // ==========================================
     // Player Mode (視聴者画面 - 共通表示ロジック)
     // ==========================================
@@ -142,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerUI.style.display = 'block';
             let quizData = [];
             let displayTitle = '';
+
             if (tabName) {
                 document.getElementById('player-title').textContent = "読込中...";
                 const grouped = await fetchDataFromGAS();
@@ -154,30 +180,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayTitle = payload.t || 'Quiz List';
                 quizData = payload.x || [];
             }
+
             if (quizData.length === 0) throw new Error('クイズが見つかりません');
+
             document.getElementById('player-title').textContent = displayTitle;
-            document.getElementById('quiz-total-count').textContent = quizData.length;
+
             // 共有リンク時、スマホなら自動でモバイルビューに
             if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
                 playerUI.classList.add('mobile-view');
             }
+
             renderQuizList('list-mount', quizData, displayTitle);
         } catch (e) {
             console.error("Player mode init error:", e);
             alert('URLが無効、またはデータの取得に失敗しました。');
         }
     }
+
     function renderQuizList(mountId, data, title = '') {
-        const listMount = document.getElementById(mountId);
-        if (!listMount) return;
+        const mount = document.getElementById(mountId);
+        if (!mount) return;
         let html = '';
-        // モバイル表示用に現在のタブ名（タイトル）を先頭に挿入
-        if (title) {
-            html += `<div class="mobile-only-title">${esc(title)}</div>`;
-        }
-        html += `<table class="player-table quiz-table">`;
-        html += `<thead><tr><th class="td-no">NO.</th><th class="td-q">問題</th><th class="td-c">選択肢</th><th class="td-a">正解</th><th class="td-e">解説</th></tr></thead>`;
-        html += `<tbody>`;
+        html += `<table class="player-table quiz-table"><thead><tr><th>No.</th><th>問題</th><th>選択肢</th><th>正解</th><th>解説</th></tr></thead><tbody>`;
+
         let lastSectionKey = '';
         data.forEach((item, index) => {
             const currentSectionKey = `${item.c}|${item.i}`;
@@ -194,8 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 lastSectionKey = currentSectionKey;
             }
+
             let displayQ = item.q;
             let displayA = item.a;
+
             // --- 全てのブラケット除去 (間違い探し・通常モード共通) ---
             const stripBrackets = (s) => (s ? String(s).replace(/\[\[|\]\]/g, '') : '');
             if (displayQ.includes('[')) {
@@ -207,11 +234,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayQ = stripBrackets(displayQ);
                 displayA = stripBrackets(displayA);
             }
+
             displayQ = formatQ(displayQ);
             let displayChoices = '';
             let explanation = item.e || '';
             if (item.t) explanation = `【日本語訳】\n${item.t}\n\n${explanation}`;
             explanation = stripBrackets(explanation);
+
             // --- モード特定処理 ---
             if (item.m === 'sort') {
                 const baseStr = String(item.a);
@@ -227,15 +256,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayQ = `<div class="anagram-box-container">${shuffled.map(u => `<span>${esc(u)}</span>`).join('')}</div>`;
                 displayChoices = '';
             }
+
             // --- 4択表示の判定 ---
             const cat = String(item.c);
             const mode = String(item.m).toLowerCase();
             const isChoiceRequired = cat.includes('文法') || cat.includes('読解') || cat.includes('論理') || mode.includes('4choice') || mode.includes('listening');
             const isExcluded = cat.includes('単語') || cat.includes('熟語') || cat.includes('並び替え') || cat.includes('アナグラム') || cat.includes('フラッシュ') || mode.includes('sort') || mode.includes('anagram') || mode.includes('mistake');
+
             if (isChoiceRequired && !isExcluded && item.d1 && !displayChoices) {
                 const choices = shuffle([item.a, item.d1, item.d2, item.d3]);
                 displayChoices = `<div class="choice-grid">${choices.map(c => `<div class="choice-item" onclick="speakText(event, this.textContent)">${esc(c)}</div>`).join('')}</div>`;
             }
+
             const printItemData = { q: displayQ, a: displayA, e: explanation.trim() };
             html += `
                 <tr id="item-${mountId}-${index}" class="quiz-item-row" onclick="revealItem('${mountId}', ${index})">
@@ -260,8 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             item._print = printItemData;
         });
+
         html += `</tbody></table>`;
         listMount.innerHTML = html;
+
         if (mountId === 'list-mount') {
             const printBody = document.getElementById('print-table-body');
             document.getElementById('print-title').textContent = title;
@@ -271,23 +305,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         }
     }
+
     window.revealItem = (mountId, idx) => {
         const item = document.getElementById(`item-${mountId}-${idx}`);
         const isRevealed = item.classList.contains('revealed');
+
         // 他の開いているアイテムを閉じる（オプション: 一度に一つだけ開く挙動）
         document.querySelectorAll('.revealed').forEach(el => {
             if (el !== item) el.classList.remove('revealed');
         });
+
         if (isRevealed) {
             item.classList.remove('revealed');
         } else {
             item.classList.add('revealed');
         }
     };
+
     // スクロール時に解答を閉じる（モバイル体験向上）
     const closeRevealed = () => {
         document.querySelectorAll('.revealed').forEach(el => el.classList.remove('revealed'));
     };
+
     let lastScrollY = window.scrollY;
     window.addEventListener('scroll', () => {
         if (Math.abs(window.scrollY - lastScrollY) > 20) {
@@ -295,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lastScrollY = window.scrollY;
         }
     }, { passive: true });
+
     // プレビューコンテナ内のスクロールにも対応
     const previewContainer = document.getElementById('player-preview-wrapper');
     if (previewContainer) {
@@ -306,10 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, { passive: true });
     }
+
     function formatQ(q) {
         if (!q) return '';
         const hasJp = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(q);
         const splitIndex = q.search(/[A-Za-z(]/);
+
         if (hasJp && splitIndex > 0) {
             const line1 = q.substring(0, splitIndex).trim();
             const line2 = q.substring(splitIndex).trim();
@@ -317,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return esc(q);
     }
+
     function shuffle(arr) {
         const a = arr.filter(s => s && String(s).trim() !== '');
         for (let i = a.length - 1; i > 0; i--) {
@@ -325,5 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return a;
     }
+
     function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : ''; }
 });
